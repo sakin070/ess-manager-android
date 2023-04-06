@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="CustomButton" parent="Widget.Material3.Button.OutlinedButton.Icon">
+        <item name="cornerSize">0dp</item>
+    </style>
+</resources>

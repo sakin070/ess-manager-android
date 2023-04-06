@@ -5,10 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.BitmapFactory
-import android.os.Bundle
-import android.os.Handler
-import android.os.IBinder
-import android.os.Looper
+import android.os.*
+import android.os.StrictMode.ThreadPolicy
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -25,9 +23,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.gson.Gson
-import org.json.JSONObject
 import net.nyx.printerservice.print.IPrinterService
 import net.nyx.printerservice.print.PrintTextFormat
+import org.json.JSONObject
 
 
 class RedeemFragment : Fragment() {
@@ -71,6 +69,8 @@ class RedeemFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        val policy = ThreadPolicy.Builder().permitAll().build()
+        StrictMode.setThreadPolicy(policy)
         requestManager =
             RequestManager.getInstance(
                 requireContext()
@@ -211,14 +211,16 @@ class RedeemFragment : Fragment() {
         requestManager.getCustomerAccountInfo(
             JSONObject(gson.toJson(beneficiaryData)),
             {
-                val jsonResponse = JSONObject(gson.toJson(it.body?.string()))
-                if (jsonResponse.getBoolean("status")) {
-                    showConfirmationDialog(
-                        true,
-                        gson.fromJson(jsonResponse.getString("data"), KudaBankResponse::class.java)
-                    )
-                } else {
-                    showConfirmationDialog(false)
+                it.body?.let {body ->
+                    val jsonResponse = JSONObject(body.string())
+                    if (jsonResponse.getBoolean("status")) {
+                        showConfirmationDialog(
+                            true,
+                            gson.fromJson(jsonResponse.getString("data"), KudaBankResponse::class.java)
+                        )
+                    } else {
+                        showConfirmationDialog(false)
+                    }
                 }
 
             },

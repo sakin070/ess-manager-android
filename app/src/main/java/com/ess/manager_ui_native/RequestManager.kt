@@ -136,26 +136,19 @@ class RequestManager(context: Context) {
     ) {
         val body: RequestBody = accountInfo.toString().toRequestBody(JSON)
         val request = Request.Builder()
-            .url("url/bank/getCustomerAccountInfo")
+            .url("$url/bank/getCustomerAccountInfo")
             .post(body)
             .header(AUTH_KEY , getAuthKey())
             .build()
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
+        val response = client.newCall(request).execute()
+        response.use {
+            if (!response.isSuccessful) {
+                onError(response)
+            } else {
+                onSuccess(response)
             }
-
-            override fun onResponse(call: Call, response: okhttp3.Response) {
-                response.use {
-                    if (!response.isSuccessful) {
-                        onError(response)
-                    } else {
-                        onSuccess(response)
-                    }
-                }
-            }
-        })
+        }
     }
 
     fun getAllActiveCards(

@@ -211,10 +211,11 @@ class RedeemFragment : Fragment() {
         requestManager.getCustomerAccountInfo(
             JSONObject(gson.toJson(beneficiaryData)),
             {
-                if (it.getBoolean("status")) {
+                val jsonResponse = JSONObject(gson.toJson(it.body?.string()))
+                if (jsonResponse.getBoolean("status")) {
                     showConfirmationDialog(
                         true,
-                        gson.fromJson(it.getString("data"), KudaBankResponse::class.java)
+                        gson.fromJson(jsonResponse.getString("data"), KudaBankResponse::class.java)
                     )
                 } else {
                     showConfirmationDialog(false)
@@ -222,11 +223,11 @@ class RedeemFragment : Fragment() {
 
             },
             {
-                if (it.networkResponse.statusCode == RedeemActivity.NO_AUTH_CODE) {
+                if (it.code == RedeemActivity.NO_AUTH_CODE) {
                     redeemViewModel.logout()
                 }
                 showConfirmationDialog(false)
-                Log.e(TAG, "handleRequestAccountInfo: $it")
+                Log.e(TAG, "error getting cards: $it")
             }
         )
     }

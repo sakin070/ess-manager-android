@@ -3,6 +3,7 @@ package com.ess.manager_ui_native
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
+import android.util.Log
 import androidx.preference.PreferenceManager
 import com.android.volley.*
 import com.android.volley.Response
@@ -12,9 +13,11 @@ import com.android.volley.toolbox.Volley
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import java.nio.charset.StandardCharsets
+
 
 class RequestManager(context: Context) {
 
@@ -128,23 +131,13 @@ class RequestManager(context: Context) {
 
     fun getCustomerAccountInfo(
         accountInfo: JSONObject,
-        listener: Response.Listener<JSONObject>,
-        errorListener: Response.ErrorListener
+        onSuccess: (responseBody: okhttp3.Response) -> Unit,
+        onError: (response: okhttp3.Response) -> Unit
     ) {
-        val jsonObjReq = object : JsonObjectRequest(
-            Method.POST,
-            "$url/bank/getCustomerAccountInfo",
-            accountInfo,
-            listener,
-            errorListener
-        ) {
-            @Throws(AuthFailureError::class)
-            override fun getHeaders() = getAuthHeader()
-        }
-        requestQueue.add(jsonObjReq)
-
+        val body: RequestBody = accountInfo.toString().toRequestBody(JSON)
         val request = Request.Builder()
-            .url("$url/bank/getCustomerAccountInfo")
+            .url("url/bank/getCustomerAccountInfo")
+            .post(body)
             .header(AUTH_KEY , getAuthKey())
             .build()
 
@@ -175,7 +168,7 @@ class RequestManager(context: Context) {
             .build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
+                Log.d(TAG, "onFailure: ${e.printStackTrace()}")
             }
 
             override fun onResponse(call: Call, response: okhttp3.Response) {
@@ -251,5 +244,6 @@ class RequestManager(context: Context) {
 
         const val AUTH_KEY = "X-Auth-Token"
         const val IS_PRIVILEGED_KEY = "isPrivileged"
+        const val TAG = "RequestManager"
     }
 }

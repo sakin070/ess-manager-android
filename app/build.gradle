@@ -4,14 +4,6 @@ plugins {
 }
 
 android {
-    signingConfigs {
-        debug {
-            storeFile file('/Users/saheed/Dev/android-key/ess-manager-key')
-            storePassword 'Levelup1!'
-            keyAlias 'ess-key'
-            keyPassword 'Levelup1!'
-        }
-    }
     namespace 'com.ess.manager_ui_native'
     compileSdk 33
 

@@ -7,11 +7,13 @@ import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.preference.PreferenceManager
 import com.ess.manager_ui_native.RequestManager.Companion.IS_PRIVILEGED_KEY
 import com.ess.manager_ui_native.database.LotteryCardDatabase
+import com.ess.manager_ui_native.models.LoginStatus
 import com.ess.manager_ui_native.models.Merchant
 import com.google.android.material.textfield.TextInputEditText
 import com.google.gson.Gson
@@ -26,6 +28,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var loginButton: Button
     private lateinit var requestManager: RequestManager
     lateinit var lotteryCardDatabase: LotteryCardDatabase
+    private val loginViewModel: LoginViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +53,28 @@ class LoginActivity : AppCompatActivity() {
             }
         )
         lotteryCardDatabase = LotteryCardDatabase.getInstance(this)
+        loginViewModel.loginStatus.observe(this) {
+            when (it) {
+                LoginStatus.SUCCESS -> {
+                    fetchData()
+                }
+                LoginStatus.BAD_CREDENTIALS -> {
+                    Toast.makeText(this, "Username or password incorrect", Toast.LENGTH_SHORT)
+                        .show()
+                }
+                else -> {
+                    Toast.makeText(this, "Internal error try again", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        loginViewModel.loaded.observe(this) { loaded ->
+            if (loaded) {
+                showSell()
+            } else {
+                showLoading()
+            }
+        }
     }
 
 
@@ -58,7 +83,7 @@ class LoginActivity : AppCompatActivity() {
             usernameInput.text.toString(),
             passwordInput.text.toString(),
             {
-                val authMerchant = Gson().fromJson(it, Merchant::class.java)
+                val authMerchant = Gson().fromJson(it.body?.string(), Merchant::class.java)
                 Log.d(TAG, "handleLogin: $authMerchant")
                 with(PreferenceManager.getDefaultSharedPreferences(this).edit()) {
                     putBoolean(
@@ -66,15 +91,15 @@ class LoginActivity : AppCompatActivity() {
                     )
                     apply()
                 }
-                fetchData()
+                loginViewModel.setLoginStatus(LoginStatus.SUCCESS)
             },
             {
                 Log.e(TAG, "handleLogin: failure error $it ")
-                Log.d(TAG, "handleLogin: ${it?.networkResponse?.statusCode}")
-                if (it?.networkResponse?.statusCode == RedeemActivity.NO_AUTH_CODE) {
-                    Toast.makeText(this, "Username or password incorrect", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "handleLogin: ${it.code}")
+                if (it.code == RedeemActivity.NO_AUTH_CODE) {
+                    loginViewModel.setLoginStatus(LoginStatus.BAD_CREDENTIALS)
                 } else {
-                    Toast.makeText(this, "Internal error try again", Toast.LENGTH_SHORT).show()
+                    loginViewModel.setLoginStatus(LoginStatus.INTERNAL_ERROR)
                 }
             }
         )
@@ -82,22 +107,27 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun showSell() {
-        startActivity(Intent(this, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        startActivity(
+            Intent(
+                this,
+                MainActivity::class.java
+            ).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
         finish()
 
     }
 
-    private fun fetchData () {
+    private fun fetchData() {
         val lotteryCardListType = object : TypeToken<List<LotteryCard>>() {}.type
         requestManager.getAllActiveCards(
             { responseBody ->
-//                showLoading()
-                responseBody.body?.use {body ->
+                loginViewModel.setLoaded(false)
+                responseBody.body?.use { body ->
                     val activeCards: List<LotteryCard> =
                         Gson().fromJson(body.string(), lotteryCardListType)
                     activeCards.forEach { lotteryCardDatabase.insertCard(it) }
                 }
-                showSell()
+                loginViewModel.setLoaded(true)
             },
             {
                 Log.e(TAG, "error getting cards: $it")

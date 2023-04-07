@@ -78,7 +78,7 @@ class NetworkWorker(appContext: Context, workerParams: WorkerParameters) :
                 lotteryCardDatabase.deleteNetworkAction(networkTask.id)
             },
             {
-                if (it?.networkResponse?.statusCode == RedeemActivity.NO_AUTH_CODE) {
+                if (it.code == RedeemActivity.NO_AUTH_CODE) {
                     logout()
                 }
             }
@@ -110,13 +110,11 @@ class NetworkWorker(appContext: Context, workerParams: WorkerParameters) :
                 lotteryCardDatabase.deleteNetworkAction(networkTask.id)
             },
             {
-                if (it?.networkResponse?.statusCode == RedeemActivity.NO_AUTH_CODE) {
+                if (it.code == RedeemActivity.NO_AUTH_CODE) {
                     logout()
                 }
             }
         )
-        // todo deleted cards after redeemption, add clean up task that reedeems all 0 val cards add job that cleans data after two months of exting on drive
-
     }
 
     companion object {

@@ -83,15 +83,17 @@ class RedeemActivity : AppCompatActivity() {
 
     private fun getBanks() {
         val bankListType = object : TypeToken<List<Bank>>() {}.type
-        requestManager.getBankList({
-            redeemViewModel.setBanks(Gson().fromJson(it, bankListType))
-        }, {
-            if (it.networkResponse.statusCode == NO_AUTH_CODE) {
-                redeemViewModel.logout()
-            }
+        requestManager.getBankList(
+            {
+                redeemViewModel.setBanks(Gson().fromJson(it.body?.string(), bankListType))
+            },
+            {
+                if (it.code == NO_AUTH_CODE) {
+                    redeemViewModel.logout()
+                }
 
-            Log.d(TAG, "getBanks: $it")
-        })
+                Log.d(TAG, "getBanks: $it")
+            })
     }
 
 

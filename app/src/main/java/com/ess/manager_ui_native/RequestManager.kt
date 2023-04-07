@@ -2,137 +2,172 @@ package com.ess.manager_ui_native
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Base64
 import android.util.Log
 import androidx.preference.PreferenceManager
-import com.android.volley.*
-import com.android.volley.Response
-import com.android.volley.toolbox.JsonObjectRequest
-import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
-import java.nio.charset.StandardCharsets
 
 
 class RequestManager(context: Context) {
 
     private val url = BuildConfig.API_URL
     private val sharedPref: SharedPreferences
-    private val requestQueue: RequestQueue by lazy {
-        Volley.newRequestQueue(context.applicationContext)
-    }
     private val client = OkHttpClient()
     val JSON: MediaType = "application/json; charset=utf-8".toMediaType()
-
 
     init {
         sharedPref = PreferenceManager.getDefaultSharedPreferences(context)
     }
 
     fun login(
-        username: String, password: String, listener: Response.Listener<String>,
-        errorListener: Response.ErrorListener
+        username: String, password: String,
+        onSuccess: (responseBody: Response) -> Unit,
+        onError: (response: Response) -> Unit
     ) {
-        val base64 = "$username:$password".toBase64()
-        val jsonObjReq = object : StringRequest(
-            Method.POST,
-            "$url/login",
-            listener,
-            errorListener
-        ) {
+        val body: RequestBody = "".toRequestBody(JSON)
 
-            @Throws(AuthFailureError::class)
-            override fun getHeaders() = mapOf("Authorization" to "Basic $base64")
-
-            override fun parseNetworkResponse(response: NetworkResponse?): Response<String> {
-                with(sharedPref.edit()) {
-                    putString(AUTH_KEY, response?.headers?.get(AUTH_KEY))
-                    apply()
-                }
-                return super.parseNetworkResponse(response)
+        val request = Request.Builder()
+            .url("$url/login")
+            .header("Authorization", Credentials.basic(username, password))
+            .post(body)
+            .build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.d(TAG, "onFailure: ${e.printStackTrace()}")
             }
-        }
-        requestQueue.add(jsonObjReq)
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!response.isSuccessful) {
+                        onError(response)
+                    } else {
+                        with(sharedPref.edit()) {
+                            putString(AUTH_KEY, response.headers[AUTH_KEY])
+                            apply()
+                        }
+                        onSuccess(response)
+                    }
+                }
+            }
+        })
     }
 
     fun onCurrentUserIsAuthorized(
-        listener: Response.Listener<String>,
-        errorListener: Response.ErrorListener
+        onSuccess: (responseBody: Response) -> Unit,
+        onError: (response: Response) -> Unit
     ) {
-        val verifyAuthRequest = object : StringRequest(
-            Method.GET,
-            "$url/auth-ping",
-            listener,
-            errorListener
-        ) {
-            @Throws(AuthFailureError::class)
-            override fun getHeaders() = getAuthHeader()
-        }
-        requestQueue.add(verifyAuthRequest)
+        val request = Request.Builder()
+            .url("$url/auth-ping")
+            .header(AUTH_KEY , getAuthKey())
+            .build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.d(TAG, "onFailure: ${e.printStackTrace()}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!response.isSuccessful) {
+                        onError(response)
+                    } else {
+                        onSuccess(response)
+                    }
+                }
+            }
+        })
     }
 
     fun logout(
-        listener: Response.Listener<String>,
-        errorListener: Response.ErrorListener
+        onSuccess: (responseBody: Response) -> Unit,
+        onError: (response: Response) -> Unit
     ) {
-        val verifyAuthRequest = object : StringRequest(
-            Method.POST,
-            "$url/logout",
-            listener,
-            errorListener
-        ) {
-            @Throws(AuthFailureError::class)
-            override fun getHeaders() = getAuthHeader()
-        }
-        requestQueue.add(verifyAuthRequest)
+        val body: RequestBody = "".toRequestBody(JSON)
+
+        val request = Request.Builder()
+            .url("$url/logout")
+            .header(AUTH_KEY , getAuthKey())
+            .post(body)
+            .build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.d(TAG, "onFailure: ${e.printStackTrace()}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!response.isSuccessful) {
+                        onError(response)
+                    } else {
+                        onSuccess(response)
+                    }
+                }
+            }
+        })
     }
 
-    fun getAuthHeader() = mapOf(
-        AUTH_KEY to sharedPref.getString(
-            AUTH_KEY, ""
-        )
-    )
-
     fun sell(
-        serialNumber: String, listener: Response.Listener<String>,
-        errorListener: Response.ErrorListener
+        serialNumber: String,
+        onSuccess: (responseBody: Response) -> Unit,
+        onError: (response: Response) -> Unit
     ) {
-        val verifyAuthRequest = object : StringRequest(
-            Method.POST,
-            "$url/card/sell?serialNumber=$serialNumber",
-            listener,
-            errorListener
-        ) {
-            @Throws(AuthFailureError::class)
-            override fun getHeaders() = getAuthHeader()
-        }
-        requestQueue.add(verifyAuthRequest)
+
+        val body: RequestBody = "".toRequestBody(JSON)
+
+        val request = Request.Builder()
+            .url("$url/card/sell?serialNumber=$serialNumber")
+            .header(AUTH_KEY , getAuthKey())
+            .post(body)
+            .build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.d(TAG, "onFailure: ${e.printStackTrace()}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!response.isSuccessful) {
+                        onError(response)
+                    } else {
+                        onSuccess(response)
+                    }
+                }
+            }
+        })
     }
 
     fun getBankList(
-        listener: Response.Listener<String>,
-        errorListener: Response.ErrorListener? = null
+        onSuccess: (responseBody: Response) -> Unit,
+        onError: (response: Response) -> Unit
     ) {
-        val jsonObjReq = object : StringRequest(
-            "$url/bank/bankList",
-            listener,
-            errorListener
-        ) {
-            @Throws(AuthFailureError::class)
-            override fun getHeaders() = getAuthHeader()
-        }
-        requestQueue.add(jsonObjReq)
+        val request = Request.Builder()
+            .url("$url/bank/bankList")
+            .header(AUTH_KEY , getAuthKey())
+            .build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.d(TAG, "onFailure: ${e.printStackTrace()}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!response.isSuccessful) {
+                        onError(response)
+                    } else {
+                        onSuccess(response)
+                    }
+                }
+            }
+        })
     }
 
     fun getCustomerAccountInfo(
         accountInfo: JSONObject,
-        onSuccess: (responseBody: okhttp3.Response) -> Unit,
-        onError: (response: okhttp3.Response) -> Unit
+        onSuccess: (responseBody: Response) -> Unit,
+        onError: (response: Response) -> Unit
     ) {
         val body: RequestBody = accountInfo.toString().toRequestBody(JSON)
         val request = Request.Builder()
@@ -152,8 +187,8 @@ class RequestManager(context: Context) {
     }
 
     fun getAllActiveCards(
-        onSuccess: (responseBody: okhttp3.Response) -> Unit,
-        onError: (response: okhttp3.Response) -> Unit
+        onSuccess: (responseBody: Response) -> Unit,
+        onError: (response: Response) -> Unit
     ) {
         val request = Request.Builder()
             .url("$url/card/active-cards")
@@ -164,7 +199,7 @@ class RequestManager(context: Context) {
                 Log.d(TAG, "onFailure: ${e.printStackTrace()}")
             }
 
-            override fun onResponse(call: Call, response: okhttp3.Response) {
+            override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!response.isSuccessful) {
                         onError(response)
@@ -186,43 +221,46 @@ class RequestManager(context: Context) {
 
     fun settleCard(
         settlementInfo: JSONObject,
-        listener: Response.Listener<JSONObject>,
-        errorListener: Response.ErrorListener
+        onSuccess: (responseBody: Response) -> Unit,
+        onError: (response: Response) -> Unit
     ) {
-        val jsonObjReq = object : JsonObjectRequest(
-            Method.POST,
-            "$url/card/settle",
-            settlementInfo,
-            listener,
-            errorListener
-        ) {
-            @Throws(AuthFailureError::class)
-            override fun getHeaders() = getAuthHeader()
+        val body = settlementInfo.toString().toRequestBody(JSON)
+        val request = Request.Builder()
+            .url("$url/card/settle")
+            .post(body)
+            .header(AUTH_KEY , getAuthKey())
+            .build()
+
+        val response = client.newCall(request).execute()
+        response.use {
+            if (!response.isSuccessful) {
+                onError(response)
+            } else {
+                onSuccess(response)
+            }
         }
-        requestQueue.add(jsonObjReq)
     }
 
     fun getCardValue(
         cardSecurity: JSONObject,
-        listener: Response.Listener<JSONObject>,
-        errorListener: Response.ErrorListener
+        onSuccess: (responseBody: Response) -> Unit,
+        onError: (response: Response) -> Unit
     ) {
-        val jsonObjReq = object : JsonObjectRequest(
-            Method.POST,
-            "$url/card/getValue",
-            cardSecurity,
-            listener,
-            errorListener
-        ) {
-            @Throws(AuthFailureError::class)
-            override fun getHeaders() = getAuthHeader()
-        }
-        requestQueue.add(jsonObjReq)
-    }
+        val body = cardSecurity.toString().toRequestBody(JSON)
+        val request = Request.Builder()
+            .url("$url/card/getValue")
+            .post(body)
+            .header(AUTH_KEY , getAuthKey())
+            .build()
 
-    fun String.toBase64(): String {
-        val data: ByteArray = this.toByteArray(StandardCharsets.UTF_8)
-        return Base64.encodeToString(data, Base64.DEFAULT)
+        val response = client.newCall(request).execute()
+        response.use {
+            if (!response.isSuccessful) {
+                onError(response)
+            } else {
+                onSuccess(response)
+            }
+        }
     }
 
     companion object {
